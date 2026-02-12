@@ -1,19 +1,28 @@
 using Microsoft.EntityFrameworkCore;
 using MinhaApi.Data;
+using MinhaApi.Services; 
 using Npgsql.EntityFrameworkCore.PostgreSQL;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
+builder.Services.AddScoped<LoteService>();
 
-// Registro do DbContext com Npgsql
+// PostgreSQL
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     var cs = builder.Configuration.GetConnectionString("DefaultConnection"); 
-    options.UseNpgsql(cs); // Removido UseSnakeCaseNamingConvention
+    options.UseNpgsql(cs);
 });
 
-// Recomendação do Npgsql para compatibilidade de timestamp (se aplicável)
+// Redis
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+{
+    var connectionString = builder.Configuration.GetConnectionString("Redis");
+    return ConnectionMultiplexer.Connect(connectionString);
+});
+
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 builder.Services.AddControllers();
@@ -26,8 +35,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
-// Mapear controllers
 app.MapControllers();
 
 app.Run();
